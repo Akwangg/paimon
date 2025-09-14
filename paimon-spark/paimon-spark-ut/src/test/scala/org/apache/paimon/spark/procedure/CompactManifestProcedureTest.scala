@@ -42,6 +42,7 @@ class CompactManifestProcedureTest extends PaimonSparkTestBase with StreamTest {
 
     var rows = spark.sql("SELECT sum(num_deleted_files) FROM `T$manifests`").collectAsList()
     Assertions.assertThat(rows.get(0).getLong(0)).isEqualTo(6L)
+//    spark.sql("CALL sys.compact_manifest(table => 'T', options => 'commit.user-prefix=compact_manifest_user')")
     spark.sql("CALL sys.compact_manifest(table => 'T')")
     rows = spark.sql("SELECT sum(num_deleted_files) FROM `T$manifests`").collectAsList()
     Assertions.assertThat(rows.get(0).getLong(0)).isEqualTo(0L)

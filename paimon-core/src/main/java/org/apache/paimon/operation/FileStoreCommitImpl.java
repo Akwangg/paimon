@@ -1223,6 +1223,9 @@ public class FileStoreCommitImpl implements FileStoreCommit {
                                 commitTimeout, retryCount));
             }
 
+            // askwang-todo: 添加 commit failed 的日志
+            LOG.info("Commit failed for compact manifest, will be retried again.");
+
             commitRetryWait(retryCount);
             retryCount++;
         }
@@ -1239,6 +1242,9 @@ public class FileStoreCommitImpl implements FileStoreCommit {
                 manifestList.readDataManifests(latestSnapshot);
         List<ManifestFileMeta> mergeAfterManifests;
 
+        // 这里去掉了 CommitResult 的原因是 mergeBeforeManifests 必须是最新 snapshot 的，或者是上一次的 retryResult 加上新增的
+        // delta manifest，
+        // 由于 compact manifest 提交的 snapshot 没有 delta manifest-list 信息，所以这里没必要复用 CommitResult
         // 这段代码改得简单多了。之前用 ManifestCompactResult 实现的，但并没有实现 Result 的复用，
         // 既然是进行 manifest full merge，肯定是会重写 manifest 的
         // the fist trial
@@ -1290,7 +1296,6 @@ public class FileStoreCommitImpl implements FileStoreCommit {
 
         // askwang-todo: 如果 commit snapshot 失败，相应写的 manifest 和 manifest-list 文件是否会删除？
         if (!success) {
-            System.out.println("commit snapshot not success.");
             manifestList.delete(deltaManifestList.getLeft());
             cleanUpNoReuseTmpManifests(baseManifestList, mergeBeforeManifests, mergeAfterManifests);
         }
