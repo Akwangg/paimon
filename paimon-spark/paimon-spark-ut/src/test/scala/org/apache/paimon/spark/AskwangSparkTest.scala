@@ -16,9 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.paimon.spark.sql
-
-import org.apache.paimon.spark.PaimonHiveTestBase
+package org.apache.paimon.spark
 
 import org.apache.spark.sql.internal.SQLConf
 
@@ -37,4 +35,5 @@ class AskwangSparkTest extends PaimonHiveTestBase {
       }
     }
   }
+
 }

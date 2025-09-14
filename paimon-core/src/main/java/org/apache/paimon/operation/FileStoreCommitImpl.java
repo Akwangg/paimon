@@ -1239,6 +1239,8 @@ public class FileStoreCommitImpl implements FileStoreCommit {
                 manifestList.readDataManifests(latestSnapshot);
         List<ManifestFileMeta> mergeAfterManifests;
 
+        // 这段代码改得简单多了。之前用 ManifestCompactResult 实现的，但并没有实现 Result 的复用，
+        // 既然是进行 manifest full merge，肯定是会重写 manifest 的
         // the fist trial
         mergeAfterManifests =
                 ManifestFileMerger.merge(
@@ -1250,6 +1252,7 @@ public class FileStoreCommitImpl implements FileStoreCommit {
                         partitionType,
                         manifestReadParallelism);
 
+        // manifest merge 前后没有变化，不需要 commit snapshot
         if (new HashSet<>(mergeBeforeManifests).equals(new HashSet<>(mergeAfterManifests))) {
             // no need to commit this snapshot, because no compact were happened
             return true;
@@ -1283,7 +1286,15 @@ public class FileStoreCommitImpl implements FileStoreCommit {
                         latestSnapshot.properties(),
                         latestSnapshot.nextRowId());
 
-        return commitSnapshotImpl(newSnapshot, emptyList());
+        boolean success = commitSnapshotImpl(newSnapshot, emptyList());
+
+        // askwang-todo: 如果 commit snapshot 失败，相应写的 manifest 和 manifest-list 文件是否会删除？
+        if (!success) {
+            System.out.println("commit snapshot not success.");
+            manifestList.delete(deltaManifestList.getLeft());
+            cleanUpNoReuseTmpManifests(baseManifestList, mergeBeforeManifests, mergeAfterManifests);
+        }
+        return success;
     }
 
     private boolean commitSnapshotImpl(Snapshot newSnapshot, List<PartitionEntry> deltaStatistics) {

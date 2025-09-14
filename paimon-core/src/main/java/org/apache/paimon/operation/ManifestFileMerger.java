@@ -191,8 +191,8 @@ public class ManifestFileMerger {
                 deltaDeleteFileNum,
                 totalDeltaFileSize);
 
+        // 并发读取 ManifestEntry，获取 FileKind = DELETE 的 entry
         // 2.1. read all delete entries
-
         Set<FileEntry.Identifier> deleteEntries =
                 FileEntry.readDeletedEntries(manifestFile, inputs, manifestReadParallelism);
 
@@ -203,6 +203,7 @@ public class ManifestFileMerger {
             predicate = PartitionPredicate.alwaysFalse();
         } else {
             if (partitionType.getFieldCount() > 0) {
+                // deleteEntries 涉及的分区信息
                 Set<BinaryRow> deletePartitions = computeDeletePartitions(deleteEntries);
                 predicate = PartitionPredicate.fromMultiple(partitionType, deletePartitions);
             } else {
@@ -217,14 +218,21 @@ public class ManifestFileMerger {
             Iterator<ManifestFileMeta> iterator = toBeMerged.iterator();
             while (iterator.hasNext()) {
                 ManifestFileMeta file = iterator.next();
+                // Filter<ManifestFileMeta> mustChange = file -> file.numDeletedFiles() > 0 ||
+                // file.fileSize() < suggestedMetaSize
                 if (mustChange.test(file)) {
                     continue;
                 }
+                // 提前根据分区元数据进行一层过滤，这样就不需要读具体的 List<ManifestEntry>
+                // ManifestFileMeta 不在 deletePartitions 范围，
+                // 比如 deletePartitions 范围是 [hour=01, hour=18]，那分区 [hour=19, hour=23] 的
+                // ManifestFileMeta 内就没有要 delete 的 entry，这部分就跳过读取
                 if (!predicate.test(
                         file.numAddedFiles() + file.numDeletedFiles(),
                         file.partitionStats().minValues(),
                         file.partitionStats().maxValues(),
                         file.partitionStats().nullCounts())) {
+                    // iterator.remove 等价于 toBeMerged 移除这条记录
                     iterator.remove();
                     result.add(file);
                 }
@@ -244,14 +252,19 @@ public class ManifestFileMerger {
             for (ManifestFileMeta file : toBeMerged) {
                 List<ManifestEntry> entries = new ArrayList<>();
                 boolean requireChange = mustChange.test(file);
+                // 顺序读取 ManifestFileMeta 的 ManifestEntry，决定是否要重写
                 for (ManifestEntry entry : manifestFile.read(file.fileName(), file.fileSize())) {
+                    // DELETE entry 直接跳过
                     if (entry.kind() == FileKind.DELETE) {
                         continue;
                     }
 
+                    // 如果是 ADD entry，并且在 deleteEntries 存在，则要丢掉这个 entry，
+                    // 并标记为要重写 ManifestFileMeta 这个文件
                     if (deleteEntries.contains(entry.identifier())) {
                         requireChange = true;
                     } else {
+                        // 这个 ManifestFileMeta 要重写的所有 entry 记录
                         entries.add(entry);
                     }
                 }
@@ -259,6 +272,7 @@ public class ManifestFileMerger {
                 if (requireChange) {
                     writer.write(entries);
                 } else {
+                    // 如果一个 ManifestFileMeta 都是 ADD 操作，不需要重写，则直接保留，复用 ManifestFile 文件
                     result.add(file);
                 }
             }

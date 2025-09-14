@@ -16,11 +16,11 @@
  * limitations under the License.
  */
 
-package org.apache.paimon.flink.procedure;
+package org.apache.paimon.flink;
 
 import org.apache.paimon.data.Timestamp;
-import org.apache.paimon.flink.CatalogITCaseBase;
 import org.apache.paimon.table.FileStoreTable;
+import org.apache.paimon.tag.Tag;
 import org.apache.paimon.utils.SnapshotManager;
 
 import org.apache.flink.types.Row;
@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,7 +68,10 @@ public class AskwangPaimonFlinkTest extends CatalogITCaseBase {
 
         // tag-2 as the base older_than time.
         // tag-1 expired by its file creation time.
-        LocalDateTime olderThanTime1 = table.tagManager().tag("tag-2").getTagCreateTime();
+        Optional<Tag> tag = table.tagManager().get("tag-2");
+        assert (tag.isPresent());
+        LocalDateTime olderThanTime1 = tag.get().getTagCreateTime();
+        assert (olderThanTime1 != null);
         java.sql.Timestamp timestamp1 =
                 new java.sql.Timestamp(
                         Timestamp.fromLocalDateTime(olderThanTime1).getMillisecond());
@@ -84,7 +88,10 @@ public class AskwangPaimonFlinkTest extends CatalogITCaseBase {
 
         // tag-4 as the base older_than time.
         // tag-2,tag-3,tag-5 expired, tag-5 reached its tagTimeRetained.
-        LocalDateTime olderThanTime2 = table.tagManager().tag("tag-4").getTagCreateTime();
+        Optional<Tag> tag1 = table.tagManager().get("tag-4");
+        assert (tag1.isPresent());
+        LocalDateTime olderThanTime2 = tag1.get().getTagCreateTime();
+        assert olderThanTime2 != null;
         java.sql.Timestamp timestamp2 =
                 new java.sql.Timestamp(
                         Timestamp.fromLocalDateTime(olderThanTime2).getMillisecond());

@@ -16,9 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.paimon.spark.sql
-
-import org.apache.paimon.spark.PaimonSparkTestBase
+package org.apache.paimon.spark
 
 import org.apache.spark.scheduler.{SparkListener, SparkListenerStageSubmitted}
 import org.apache.spark.sql.Row

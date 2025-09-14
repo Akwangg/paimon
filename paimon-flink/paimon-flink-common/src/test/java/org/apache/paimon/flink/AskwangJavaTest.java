@@ -16,25 +16,33 @@
  * limitations under the License.
  */
 
-package org.apache.paimon.spark.sql
+package org.apache.paimon.flink;
 
-import org.apache.paimon.spark.PaimonHiveTestBase
+import org.junit.jupiter.api.Test;
 
-import org.apache.spark.sql.internal.SQLConf
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
-/** only spark test， not related to paimon. */
-class AskwangSparkTest extends PaimonHiveTestBase {
+/** paimon flink test. */
+public class AskwangJavaTest extends CatalogITCaseBase {
 
-  test("create table/create table like/create table as select") {
-    withTable("tb") {
-      withSQLConf(
-        SQLConf.PLAN_CHANGE_LOG_LEVEL.key -> "INFO",
-        SQLConf.DATETIME_JAVA8API_ENABLED.key -> "true") {
-        sql("CREATE TABLE `tb1`(i INT, dt TIMESTAMP) USING parquet")
-        sql("show create table tb1").show(false)
-
-        // sql("CREATE TABLE `tb2` like `tb1`")
-      }
+    @Test
+    public void testABC() {
+        List<Integer> list = new LinkedList<>(Arrays.asList(1, 2, 3, 4, 5));
+        List<Integer> result = new ArrayList<>();
+        Iterator<Integer> iter = list.iterator();
+        // list.removeIf(next -> next >= 4);
+        while (iter.hasNext()) {
+            Integer next = iter.next();
+            if (next >= 4) {
+                iter.remove();
+                result.add(next);
+            }
+        }
+        System.out.println(list);
+        System.out.println(result);
     }
-  }
 }
